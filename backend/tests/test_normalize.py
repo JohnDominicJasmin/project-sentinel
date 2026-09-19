@@ -86,7 +86,10 @@ def test_non_object_json_is_rejected(raw):
         parse_message(raw)
 
 
-@pytest.mark.parametrize("url", ["javascript:alert(1)", "data:text/html,x", 42])
+@pytest.mark.parametrize("url", [
+    "javascript:alert(1)", "data:text/html,x", 42, "//evil.example/x.jpg", r"/\evil.example/x.jpg",
+    "/api/chaos/429", "/snapshots/../api/health",
+])
 def test_unsafe_snapshot_urls_are_dropped(url):
     e = normalize(event(snapshot_url=url), NOW)
     assert e.snapshot_url is None

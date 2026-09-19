@@ -58,9 +58,7 @@ def normalize(data: dict, received_at: datetime) -> Event:
         timestamp = received_at
 
     snapshot_url = data.get("snapshot_url")
-    if snapshot_url is not None and not (
-        isinstance(snapshot_url, str) and snapshot_url.startswith(("https://", "http://", "/"))
-    ):
+    if snapshot_url is not None and not _safe_snapshot_url(snapshot_url):
         issues.append(problem("snapshot_url"))
         snapshot_url = None
 
@@ -83,6 +81,14 @@ def normalize(data: dict, received_at: datetime) -> Event:
         received_at=received_at,
         issues=issues,
     )
+
+
+def _safe_snapshot_url(value) -> bool:
+    if not isinstance(value, str) or "\\" in value:
+        return False
+    if value.startswith(("https://", "http://")):
+        return True
+    return value.startswith("/snapshots/") and ".." not in value
 
 
 def _parse_time(value):
