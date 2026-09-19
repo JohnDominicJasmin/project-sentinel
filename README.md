@@ -35,6 +35,23 @@ Every alarm is shown the moment it arrives, with a severity from simple rules. T
 - **Swappable:** the model sits behind a small `Triager` interface. Another provider or a local model is one class.
 - **Failure injection:** `POST /api/chaos/{off|slow|429|junk|flaky}` makes the AI misbehave on purpose, to show degradation live.
 
+## Camera
+
+A camera worker turns video into alarms that flow through the same pipeline, triage and dashboard as sensor events.
+
+- **Off the hot path:** decoding and detection run in a separate process, so they never compete with the event loop that ingests the stream. The backend moves its detections into `Pipeline.submit` like any other event. If the worker dies, it is restarted.
+- **Never behind real time:** a reader thread keeps only the newest frame. The detector samples it at `CAMERA_FPS` (4 by default); older frames are skipped, not queued.
+- **Detector:** YOLO26 nano exported to ONNX at 416 px, run with ONNX Runtime on CPU, plus our own NMS. On a laptop Ryzen 5 with no GPU: 22 ms p50, 35 ms p95 per frame. It reports people, vehicles and animals.
+- **No alarm spam:** a small IoU tracker gives each object one identity. An object raises one alarm once it is seen in two frames, a person who stays past `CAMERA_LOITER_S` raises one loitering alarm, and an object that flickers out and back at the same spot within 30 s is suppressed.
+- **Evidence:** every camera alarm carries a snapshot with the object boxed, shown as a thumbnail on the dashboard. The dashboard also shows the live annotated feed and the worker's numbers.
+- **Feed used:** `footage/cctv.mp4` (a free Pexels clip, looped). `CAMERA_SOURCE` also accepts an RTSP or HLS URL or a webcam index. To simulate a real IP camera, publish the clip with MediaMTX and point `CAMERA_SOURCE` at it:
+
+  ```bash
+  ffmpeg -re -stream_loop -1 -i footage/cctv.mp4 -c copy -f rtsp rtsp://localhost:8554/cam1
+  ```
+
+  The model file is Ultralytics YOLO26n, licensed AGPL-3.0.
+
 ## Run it (so far)
 
 Requires Python 3.11+.

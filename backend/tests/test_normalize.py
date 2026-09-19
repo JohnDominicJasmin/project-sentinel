@@ -84,3 +84,14 @@ def test_unparseable_messages_are_rejected(raw):
 def test_non_object_json_is_rejected(raw):
     with pytest.raises(Rejected):
         parse_message(raw)
+
+
+@pytest.mark.parametrize("url", ["javascript:alert(1)", "data:text/html,x", 42])
+def test_unsafe_snapshot_urls_are_dropped(url):
+    e = normalize(event(snapshot_url=url), NOW)
+    assert e.snapshot_url is None
+    assert "invalid snapshot_url" in e.issues
+
+
+def test_safe_snapshot_urls_are_kept():
+    assert normalize(event(snapshot_url="/snapshots/cam_1.jpg"), NOW).snapshot_url == "/snapshots/cam_1.jpg"

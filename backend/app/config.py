@@ -21,6 +21,34 @@ class Settings:
     llm_timeout_s: float = float(os.getenv("LLM_TIMEOUT_S", "10"))
     llm_chaos: str = os.getenv("LLM_CHAOS", "off")
     site_timezone: str = os.getenv("SITE_TIMEZONE", "America/New_York")
+    camera_source: str = os.getenv("CAMERA_SOURCE", "")
+    camera_id: str = os.getenv("CAMERA_ID", "cam-1")
+    camera_site_id: str = os.getenv("CAMERA_SITE_ID", "site-101")
+    camera_zone: str = os.getenv("CAMERA_ZONE", "parking-lot")
+    camera_fps: float = float(os.getenv("CAMERA_FPS", "4"))
+    camera_confidence: float = float(os.getenv("CAMERA_CONFIDENCE", "0.45"))
+    camera_loiter_s: float = float(os.getenv("CAMERA_LOITER_S", "15"))
+    camera_model: str = os.getenv("CAMERA_MODEL", "models/yolo26n.onnx")
 
 
 settings = Settings()
+SNAPSHOT_DIR = ROOT / "data" / "snapshots"
+
+
+def resolve(path: str) -> str:
+    candidate = ROOT / path
+    return str(candidate) if candidate.exists() else path
+
+
+def camera_config() -> dict:
+    return {
+        "source": resolve(settings.camera_source),
+        "camera_id": settings.camera_id,
+        "site_id": settings.camera_site_id,
+        "zone": settings.camera_zone,
+        "fps": settings.camera_fps,
+        "confidence": settings.camera_confidence,
+        "loiter_s": settings.camera_loiter_s,
+        "model": resolve(settings.camera_model),
+        "snapshot_dir": str(SNAPSHOT_DIR),
+    }

@@ -58,7 +58,10 @@ def normalize(data: dict, received_at: datetime) -> Event:
         timestamp = received_at
 
     snapshot_url = data.get("snapshot_url")
-    if not isinstance(snapshot_url, str):
+    if snapshot_url is not None and not (
+        isinstance(snapshot_url, str) and snapshot_url.startswith(("https://", "http://", "/"))
+    ):
+        issues.append(problem("snapshot_url"))
         snapshot_url = None
 
     metadata = data.get("metadata")

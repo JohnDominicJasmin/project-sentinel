@@ -18,3 +18,7 @@ data/
 # editors
 .vscode/
 .idea/
+
+# local footage (only the sample clip ships)
+footage/*
+!footage/cctv.mp4

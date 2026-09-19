@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlarmRow } from './AlarmRow'
+import { CameraPanel } from './CameraPanel'
 import { StatusBar } from './StatusBar'
 import { byResolvedTime, byUrgency } from './format'
 import type { Alarm, Connection, FeedStats, Status } from './types'
@@ -25,6 +26,7 @@ export default function App() {
     <div className="app">
       <StatusBar connection={connection} stats={stats} />
       <main>
+        {connection === 'live' && stats?.camera && <CameraPanel camera={stats.camera} />}
         <div className="tabs" role="tablist" aria-label="Alarm queues">
           {TABS.map(({ status, label }) => (
             <button

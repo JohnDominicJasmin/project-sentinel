@@ -3,10 +3,11 @@ import logging
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
-from .config import ROOT, settings
+from .camera.bridge import CameraBridge
+from .config import ROOT, SNAPSHOT_DIR, camera_config, settings
 from .hub import RESYNC, DashboardHub
 from .pipeline import Pipeline
 from .store import AlarmNotFound, AlarmStore, InvalidTransition
@@ -51,6 +52,7 @@ triage = TriageService(
 )
 pipeline = Pipeline(store, on_accepted=triage.submit)
 stream = StreamClient(settings.stream_url, pipeline)
+camera = CameraBridge(camera_config(), pipeline) if settings.camera_source else None
 
 
 def current_stats() -> dict:
@@ -62,6 +64,7 @@ def current_stats() -> dict:
         "dashboards": hub.client_count,
         "resyncs": hub.resyncs,
         "ai": triage.stats(),
+        "camera": camera.stats() if camera else None,
     }
 
 
@@ -93,7 +96,12 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(publish_stats(), name="publish-stats"),
         asyncio.create_task(log_stats(), name="log-stats"),
     ]
+    if camera:
+        camera.start()
+        tasks.append(asyncio.create_task(camera.pump(), name="camera"))
     yield
+    if camera:
+        camera.stop()
     for task in tasks:
         task.cancel()
     await asyncio.gather(*tasks, return_exceptions=True)
@@ -142,6 +150,13 @@ async def set_chaos(mode: str):
     return {"chaos": mode}
 
 
+@app.get("/api/camera/frame")
+async def camera_frame():
+    if not camera or not camera.latest_frame:
+        return Response(status_code=204)
+    return Response(camera.latest_frame, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
 @app.websocket("/ws")
 async def dashboard_socket(ws: WebSocket):
     await ws.accept()
@@ -158,6 +173,9 @@ async def dashboard_socket(ws: WebSocket):
     finally:
         hub.disconnect(queue)
 
+
+SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/snapshots", StaticFiles(directory=SNAPSHOT_DIR), name="snapshots")
 
 dist = ROOT / "frontend" / "dist"
 if dist.is_dir():

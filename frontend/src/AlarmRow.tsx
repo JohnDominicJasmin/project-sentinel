@@ -30,6 +30,11 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
         <span className={`chip chip-${alarm.severity}`}>{SEVERITY_LABEL[alarm.severity]}</span>
       </td>
       <td className="alarm-cell">
+        {e.snapshot_url && (
+          <a className="snapshot" href={e.snapshot_url} target="_blank" rel="noreferrer">
+            <img src={e.snapshot_url} alt={`Camera snapshot for ${typeLabel(e.type)}`} loading="lazy" />
+          </a>
+        )}
         <div className="alarm-type">
           {typeLabel(e.type)}
           {ai && <span className={`verdict verdict-${ai.verdict}`}>{VERDICT_LABEL[ai.verdict]}</span>}

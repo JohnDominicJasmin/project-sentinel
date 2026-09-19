@@ -54,6 +54,29 @@ export interface FeedStats {
   dashboards: number
   resyncs: number
   ai: AiStats
+  camera: CameraStats | null
+}
+
+export interface CameraStats {
+  status: string
+  camera_id?: string
+  site_id?: string
+  zone?: string
+  source?: string
+  source_fps?: number
+  target_fps?: number
+  frames_read?: number
+  frames_processed?: number
+  frames_skipped?: number
+  reconnects?: number
+  inference_p50_ms?: number | null
+  inference_p95_ms?: number | null
+  active_tracks?: number
+  events_sent?: number
+  events_suppressed?: number
+  events_dropped?: number
+  events_received: number
+  worker_restarts: number
 }
 
 export interface AiStats {
