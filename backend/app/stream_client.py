@@ -8,7 +8,7 @@ from .pipeline import Pipeline
 
 log = logging.getLogger("sentinel.stream")
 
-MAX_BACKOFF_SECONDS = 15
+MAX_BACKOFF_SECONDS = 5
 
 
 class StreamClient:

@@ -4,6 +4,15 @@ A miniature real-time alarm monitoring service: it ingests a live stream of sens
 
 > Work in progress. Architecture, trade-offs and the demo link will be added as the pieces land.
 
+## Scope
+
+The five core requirements come first and must work end to end. On top of that I chose two stretch goals:
+
+- **Correlation and escalation:** repeated or combined signals at one site become a single escalated incident. It completes the "escalate on patterns" part of the alerting rule, and it cuts the noise an operator has to read.
+- **Operability (AI cost and latency metrics):** the dashboard shows what the AI layer costs and how fast it answers, so its trade-offs are visible and measured.
+
+Deliberately not built: deeper vision (zone and tripwire rules, frame captioning), persistence and per-site history, the operator feedback loop, and dashboard auth. They are listed under "What I would build next".
+
 ## Run it (so far)
 
 Requires Python 3.11+.
