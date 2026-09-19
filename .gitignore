@@ -1,0 +1,20 @@
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# node
+node_modules/
+dist/
+
+# runtime data
+data/
+*.db
+
+# editors
+.vscode/
+.idea/
