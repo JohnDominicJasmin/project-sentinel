@@ -56,7 +56,7 @@ A camera worker turns video into alarms that flow through the same pipeline, tri
 - **No alarm spam:** a small IoU tracker gives each object one identity. An object raises one alarm once it is seen in two frames, a person who stays past `CAMERA_LOITER_S` raises one loitering alarm, and an object that flickers out and back at the same spot within 30 s is suppressed.
 - **Evidence:** every camera alarm carries a snapshot with the object boxed, shown as a thumbnail on the dashboard. The dashboard also shows the live annotated feed and the worker's numbers.
 - **Feeds:** `feeds.json` lists the camera feeds by name and zone. Feeds whose file is missing are skipped. The dashboard has a feed switcher: switching restarts the worker on the new source in about 3 seconds, and alarms carry the new zone. An **Enlarge** button opens the live annotated view full size.
-- **Feed used:** `footage/cctv.mp4` (a free Pexels clip, looped) ships with the repo. `CAMERA_SOURCE` adds an extra source, such as an RTSP or HLS URL or a webcam index. To simulate a real IP camera, publish the clip with MediaMTX and point `CAMERA_SOURCE` at it:
+- **Feeds shipped:** five looped clips in `footage/`: a street corner at night (Pexels), a driveway at night with a person approaching a car, a warehouse floor, a four-camera stairwell and garage view, and a construction site perimeter (re-encoded to 720p to stay small). `CAMERA_SOURCE` adds an extra source, such as an RTSP or HLS URL or a webcam index. To simulate a real IP camera, publish the clip with MediaMTX and point `CAMERA_SOURCE` at it:
 
   ```bash
   ffmpeg -re -stream_loop -1 -i footage/cctv.mp4 -c copy -f rtsp rtsp://localhost:8554/cam1
