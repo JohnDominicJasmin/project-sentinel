@@ -423,7 +423,11 @@ select:focus-visible {
   position: absolute;
   right: 6px;
   bottom: 6px;
-  padding: 3px 10px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: rgba(14, 17, 22, 0.85);
