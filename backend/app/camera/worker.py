@@ -129,7 +129,7 @@ def run(config: dict, events, frames, stop) -> None:
                     sent += 1
                 else:
                     dropped += 1
-            offer_latest(frames, encode(annotate(frame, tracks), width=640, quality=70))
+            offer_latest(frames, encode(annotate(frame, tracks), width=960, quality=70))
 
         now = time.monotonic()
         if now >= next_stats:

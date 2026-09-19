@@ -1,3 +1,4 @@
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,10 +24,12 @@ class Settings:
     site_timezone: str = os.getenv("SITE_TIMEZONE", "America/New_York")
     escalation_window_s: float = float(os.getenv("ESCALATION_WINDOW_S", "120"))
     escalation_threshold: int = int(os.getenv("ESCALATION_THRESHOLD", "3"))
+    camera_feeds_file: str = os.getenv("CAMERA_FEEDS_FILE", "feeds.json")
+    camera_feed: str = os.getenv("CAMERA_FEED", "")
     camera_source: str = os.getenv("CAMERA_SOURCE", "")
     camera_id: str = os.getenv("CAMERA_ID", "cam-1")
     camera_site_id: str = os.getenv("CAMERA_SITE_ID", "site-101")
-    camera_zone: str = os.getenv("CAMERA_ZONE", "parking-lot")
+    camera_zone: str = os.getenv("CAMERA_ZONE", "custom-camera")
     camera_fps: float = float(os.getenv("CAMERA_FPS", "4"))
     camera_confidence: float = float(os.getenv("CAMERA_CONFIDENCE", "0.45"))
     camera_loiter_s: float = float(os.getenv("CAMERA_LOITER_S", "15"))
@@ -42,12 +45,34 @@ def resolve(path: str) -> str:
     return str(candidate) if candidate.exists() else path
 
 
-def camera_config() -> dict:
+def load_feeds() -> list[dict]:
+    """Camera feeds from feeds.json whose source exists, plus CAMERA_SOURCE (e.g. an RTSP URL) if set."""
+    feeds = []
+    path = ROOT / settings.camera_feeds_file
+    if path.is_file():
+        for feed in json.loads(path.read_text(encoding="utf-8")):
+            if (ROOT / feed["source"]).is_file() or "://" in feed["source"]:
+                feeds.append(feed)
+    if settings.camera_source:
+        feeds.insert(0, {
+            "id": "custom", "name": settings.camera_zone, "zone": settings.camera_zone,
+            "source": settings.camera_source,
+        })
+    return feeds
+
+
+def initial_feed(feeds: list[dict]) -> dict | None:
+    if settings.camera_feed == "off" or not feeds:
+        return None
+    return next((f for f in feeds if f["id"] == settings.camera_feed), feeds[0])
+
+
+def camera_config(feed: dict) -> dict:
     return {
-        "source": resolve(settings.camera_source),
+        "source": resolve(feed["source"]),
         "camera_id": settings.camera_id,
         "site_id": settings.camera_site_id,
-        "zone": settings.camera_zone,
+        "zone": feed["zone"],
         "fps": settings.camera_fps,
         "confidence": settings.camera_confidence,
         "loiter_s": settings.camera_loiter_s,

@@ -47,3 +47,11 @@ def test_dashboard_socket_sends_snapshot_then_live_changes():
         assert delta["type"] == "alarm"
         assert delta["seq"] == snapshot["seq"] + 1
         assert delta["alarm"]["status"] == "acknowledged"
+
+
+def test_camera_feed_list_and_unknown_feed():
+    listing = client.get("/api/camera/feeds").json()
+    assert set(listing) == {"active", "feeds"}
+    if listing["feeds"]:
+        assert listing["active"] in {f["id"] for f in listing["feeds"]}
+        assert client.post("/api/camera/feeds/no-such-feed").status_code == 404

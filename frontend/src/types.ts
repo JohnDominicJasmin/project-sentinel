@@ -61,6 +61,8 @@ export interface FeedStats {
 
 export interface CameraStats {
   status: string
+  feed_id?: string
+  feed_name?: string
   camera_id?: string
   site_id?: string
   zone?: string

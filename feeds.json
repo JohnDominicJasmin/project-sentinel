@@ -1,0 +1,7 @@
+[
+  {"id": "street-corner", "name": "Street corner", "zone": "street-corner", "source": "footage/cctv.mp4"},
+  {"id": "driveway", "name": "Driveway (night)", "zone": "driveway", "source": "footage/clip4.mp4"},
+  {"id": "warehouse-floor", "name": "Warehouse floor", "zone": "warehouse-floor", "source": "footage/clip3.mp4"},
+  {"id": "stairwell-garage", "name": "Stairwell and garage (4 cameras)", "zone": "stairwell-garage", "source": "footage/clip2.mp4"},
+  {"id": "construction-perimeter", "name": "Construction site perimeter", "zone": "construction-perimeter", "source": "footage/clip1_long.mp4"}
+]

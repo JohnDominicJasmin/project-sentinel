@@ -6,8 +6,8 @@ from dataclasses import asdict
 from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
-from .camera.bridge import CameraBridge
-from .config import ROOT, SNAPSHOT_DIR, camera_config, settings
+from .camera.bridge import CameraBridge, UnknownFeed
+from .config import ROOT, SNAPSHOT_DIR, camera_config, initial_feed, load_feeds, settings
 from .escalation import Correlator
 from .hub import RESYNC, DashboardHub
 from .pipeline import Pipeline
@@ -58,7 +58,9 @@ correlator = Correlator(
 pipeline.add_listener(triage.submit)
 pipeline.add_listener(correlator.observe)
 stream = StreamClient(settings.stream_url, pipeline)
-camera = CameraBridge(camera_config(), pipeline) if settings.camera_source else None
+feeds = load_feeds()
+start_feed = initial_feed(feeds)
+camera = CameraBridge(feeds, start_feed, camera_config, pipeline) if start_feed else None
 
 
 def current_stats() -> dict:
@@ -162,6 +164,23 @@ async def camera_frame():
     if not camera or not camera.latest_frame:
         return Response(status_code=204)
     return Response(camera.latest_frame, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/camera/feeds")
+async def camera_feeds():
+    if not camera:
+        return {"active": None, "feeds": []}
+    return camera.feed_list()
+
+
+@app.post("/api/camera/feeds/{feed_id}")
+async def switch_camera_feed(feed_id: str):
+    if not camera:
+        raise HTTPException(status_code=409, detail="camera is off")
+    try:
+        return await camera.switch(feed_id)
+    except UnknownFeed:
+        raise HTTPException(status_code=404, detail="unknown feed")
 
 
 @app.websocket("/ws")
