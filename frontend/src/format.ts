@@ -34,6 +34,15 @@ function verdictRank(alarm: Alarm): number {
   return alarm.ai ? VERDICT_RANK[alarm.ai.verdict] : 1
 }
 
+export function isIncident(alarm: Alarm): boolean {
+  return alarm.event.type === 'escalation'
+}
+
+export function alarmTitle(alarm: Alarm): string {
+  if (isIncident(alarm)) return String(alarm.event.metadata.title ?? 'Escalated incident')
+  return typeLabel(alarm.event.type)
+}
+
 export function typeLabel(type: string): string {
   return TYPE_LABELS[type] ?? type.replaceAll('_', ' ')
 }
@@ -57,6 +66,7 @@ export function ago(iso: string, now: number): string {
 export function byUrgency(a: Alarm, b: Alarm): number {
   return (
     SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] ||
+    Number(isIncident(b)) - Number(isIncident(a)) ||
     verdictRank(a) - verdictRank(b) ||
     b.event.received_at.localeCompare(a.event.received_at)
   )

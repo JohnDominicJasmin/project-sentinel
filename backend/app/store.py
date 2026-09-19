@@ -54,7 +54,9 @@ class AlarmStore:
             raise InvalidTransition("alarm is already resolved")
         if alarm.status == "acknowledged":
             return alarm
-        return self._update(alarm, status="acknowledged", acknowledged_at=_now())
+        updated = self._update(alarm, status="acknowledged", acknowledged_at=_now())
+        self._cascade(alarm, self.acknowledge)
+        return updated
 
     def resolve(self, event_id: str) -> Alarm:
         alarm = self._require(event_id)
@@ -67,9 +69,10 @@ class AlarmStore:
         self._resolved.append(event_id)
         while len(self._resolved) > self.max_resolved:
             self._alarms.pop(self._resolved.popleft(), None)
+        self._cascade(alarm, self.resolve)
         return updated
 
-    def apply_triage(self, event_id: str, **changes: Any) -> Optional[Alarm]:
+    def update(self, event_id: str, **changes: Any) -> Optional[Alarm]:
         alarm = self._alarms.get(event_id)
         if alarm is None:
             return None
@@ -91,6 +94,15 @@ class AlarmStore:
         self._alarms[alarm.event.event_id] = updated
         self._emit(updated)
         return updated
+
+    def _cascade(self, alarm: Alarm, action: Callable[[str], Alarm]) -> None:
+        if alarm.event.type != "escalation":
+            return
+        for linked_id in alarm.event.metadata.get("alarm_ids", []):
+            try:
+                action(linked_id)
+            except (AlarmNotFound, InvalidTransition):
+                pass
 
     def _require(self, event_id: str) -> Alarm:
         alarm = self._alarms.get(event_id)

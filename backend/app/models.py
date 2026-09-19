@@ -23,7 +23,7 @@ class Event(BaseModel):
     site_id: str
     zone: str
     type: str
-    source: Literal["camera", "sensor"]
+    source: Literal["camera", "sensor", "system"]
     confidence: Optional[float]
     timestamp: datetime
     snapshot_url: Optional[str] = None
@@ -51,6 +51,7 @@ class Alarm(BaseModel):
     triage_status: TriageStatus = "pending"
     triage_note: Optional[str] = None
     ai: Optional[AiTriage] = None
+    incident_id: Optional[str] = None
     updated_at: datetime
     acknowledged_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None

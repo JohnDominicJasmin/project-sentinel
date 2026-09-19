@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlarmRow } from './AlarmRow'
 import { CameraPanel } from './CameraPanel'
+import { CriticalBanner } from './CriticalBanner'
 import { StatusBar } from './StatusBar'
 import { byResolvedTime, byUrgency } from './format'
 import type { Alarm, Connection, FeedStats, Status } from './types'
 import { useAlarmFeed } from './useAlarmFeed'
+import { useCriticalAlerts } from './useCriticalAlerts'
 
 const ROW_LIMIT = 200
 
@@ -20,14 +22,22 @@ export default function App() {
   const now = useNow(1000)
   const groups = useMemo(() => groupByStatus(alarms), [alarms])
   const rows = groups[tab]
-  const openCritical = groups.new.filter((a) => a.severity === 'critical').length
+  const { critical, soundOn, toggleSound } = useCriticalAlerts(alarms)
+  const openCritical = critical.length
+  const queues = useRef<HTMLDivElement>(null)
+
+  const showCritical = () => {
+    setTab('new')
+    queues.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="app">
       <StatusBar connection={connection} stats={stats} />
+      <CriticalBanner critical={critical} now={now} soundOn={soundOn} onToggleSound={toggleSound} onShow={showCritical} />
       <main>
         {connection === 'live' && stats?.camera && <CameraPanel camera={stats.camera} />}
-        <div className="tabs" role="tablist" aria-label="Alarm queues">
+        <div className="tabs" role="tablist" aria-label="Alarm queues" ref={queues}>
           {TABS.map(({ status, label }) => (
             <button
               key={status}

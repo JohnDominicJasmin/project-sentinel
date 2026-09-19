@@ -74,7 +74,7 @@ def test_life_safety_is_never_downgraded():
     alarm = store.get("fire")
     assert alarm.severity == "critical" and alarm.severity_source == "rules"
     assert alarm.ai.severity == "warning"
-    assert "life-safety" in alarm.triage_note
+    assert "safety rule" in alarm.triage_note
 
 
 def test_junk_is_retried_once():

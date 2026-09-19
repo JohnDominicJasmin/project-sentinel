@@ -1,6 +1,7 @@
 from ..models import Event, Severity
 
 LIFE_SAFETY = {"panic_button", "fire_alarm", "smoke_detected"}
+ALWAYS_CRITICAL = LIFE_SAFETY | {"escalation"}
 INTRUSION = {"perimeter_breach", "door_forced", "glass_break"}
 EQUIPMENT = {"camera_offline", "sensor_fault"}
 
@@ -10,6 +11,9 @@ PERSON_CONFIDENCE = 0.6
 
 def rule_severity(event: Event) -> tuple[Severity, str]:
     kind, confidence = event.type, event.confidence
+
+    if kind == "escalation":
+        return "critical", event.metadata.get("summary") or "Escalated incident."
 
     if kind in LIFE_SAFETY:
         return "critical", "Life-safety alarm. Treat as real until verified."

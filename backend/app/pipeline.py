@@ -3,12 +3,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from .models import Alarm
+from .models import Alarm, Event
 from .normalize import Rejected, normalize, parse_message
 from .store import AlarmStore
 from .triage.rules import rule_severity
 
 log = logging.getLogger("sentinel.pipeline")
+
+Listener = Callable[[Alarm], None]
 
 
 @dataclass
@@ -21,12 +23,15 @@ class IngestStats:
 
 
 class Pipeline:
-    """Single entry point for every event, from the stream or the camera worker."""
+    """Single entry point for every event: the stream, the camera worker and the correlator."""
 
-    def __init__(self, store: AlarmStore, on_accepted: Optional[Callable[[Alarm], None]] = None) -> None:
+    def __init__(self, store: AlarmStore) -> None:
         self.store = store
-        self.on_accepted = on_accepted
         self.stats = IngestStats()
+        self._listeners: list[Listener] = []
+
+    def add_listener(self, listener: Listener) -> None:
+        self._listeners.append(listener)
 
     def submit(self, raw, origin: str = "stream") -> Optional[Alarm]:
         self.stats.received += 1
@@ -41,7 +46,13 @@ class Pipeline:
             self.stats.rejected += 1
             log.exception("unexpected error normalising message from %s", origin)
             return None
+        return self._accept(event)
 
+    def submit_event(self, event: Event) -> Optional[Alarm]:
+        self.stats.received += 1
+        return self._accept(event)
+
+    def _accept(self, event: Event) -> Optional[Alarm]:
         severity, reason = rule_severity(event)
         alarm = self.store.add(event, severity, reason)
         if alarm is None:
@@ -53,6 +64,6 @@ class Pipeline:
         if event.issues:
             self.stats.repaired += 1
             log.info("repaired %s: %s", event.event_id, ", ".join(event.issues))
-        if self.on_accepted:
-            self.on_accepted(alarm)
+        for listener in self._listeners:
+            listener(alarm)
         return alarm

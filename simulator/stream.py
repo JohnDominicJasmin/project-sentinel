@@ -4,6 +4,7 @@ Based on the reference generator in the Monitex brief. Additions:
   * one shared stream broadcast to every connected client
   * bursts on demand (press Enter) or on a timer (--burst-every)
   * optional malformed messages (--junk) to exercise validation
+  * a scripted break-in (type b then Enter) to demonstrate escalation
 
 Run:  python simulator/stream.py            (reference behaviour)
       python simulator/stream.py --junk 0.05 --burst-every 45
@@ -101,6 +102,15 @@ async def burst(size, junk_rate):
         websockets.broadcast(clients, next_message(junk_rate))
 
 
+async def break_in(site, zone):
+    print(f">>> scripted break-in at {site} / {zone}")
+    for kind, confidence in (("door_forced", 0.93), ("perimeter_breach", 0.88), ("glass_break", 0.91)):
+        event = make_event()
+        event.update(type=kind, source="sensor", site_id=site, zone=zone, confidence=confidence, metadata={})
+        websockets.broadcast(clients, json.dumps(event))
+        await asyncio.sleep(1.5)
+
+
 async def burst_timer(args):
     while True:
         await asyncio.sleep(args.burst_every)
@@ -108,13 +118,17 @@ async def burst_timer(args):
 
 
 def watch_keyboard(loop, args):
-    """Enter in this terminal fires a burst. Handy while recording the demo."""
+    """Enter fires a burst; "b" then Enter plays a break-in. Handy while recording the demo."""
     while True:
         try:
-            input()
+            line = input().strip().lower()
         except EOFError:
             return
-        asyncio.run_coroutine_threadsafe(burst(args.burst_size, args.junk), loop)
+        if line == "b":
+            job = break_in(args.scenario_site, args.scenario_zone)
+        else:
+            job = burst(args.burst_size, args.junk)
+        asyncio.run_coroutine_threadsafe(job, loop)
 
 
 def parse_args():
@@ -127,6 +141,8 @@ def parse_args():
     p.add_argument("--burst-every", type=float, default=0,
                    help="seconds between automatic bursts (0 = off)")
     p.add_argument("--seed", type=int, help="fixed random seed for repeatable runs")
+    p.add_argument("--scenario-site", default="site-101", help="site used by the scripted break-in")
+    p.add_argument("--scenario-zone", default="lobby", help="zone used by the scripted break-in")
     return p.parse_args()
 
 
@@ -138,7 +154,7 @@ async def main():
     threading.Thread(target=watch_keyboard, args=(loop, args), daemon=True).start()
     async with websockets.serve(handler, args.host, args.port):
         print(f"Event stream live on ws://{args.host}:{args.port}  "
-              f"(press Enter for a burst of {args.burst_size})")
+              f"(Enter: burst of {args.burst_size} | b + Enter: break-in at {args.scenario_site}/{args.scenario_zone})")
         tasks = [produce(args)]
         if args.burst_every:
             tasks.append(burst_timer(args))

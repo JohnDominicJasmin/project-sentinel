@@ -9,7 +9,7 @@ export interface AlarmEvent {
   site_id: string
   zone: string
   type: string
-  source: 'camera' | 'sensor'
+  source: 'camera' | 'sensor' | 'system'
   confidence: number | null
   timestamp: string
   snapshot_url: string | null
@@ -37,6 +37,7 @@ export interface Alarm {
   triage_status: TriageStatus
   triage_note: string | null
   ai: AiTriage | null
+  incident_id: string | null
   updated_at: string
   acknowledged_at: string | null
   resolved_at: string | null
@@ -54,6 +55,7 @@ export interface FeedStats {
   dashboards: number
   resyncs: number
   ai: AiStats
+  escalation: { incidents_opened: number; window_s: number; repeat_threshold: number }
   camera: CameraStats | null
 }
 
@@ -95,6 +97,8 @@ export interface AiStats {
   budget_usd: number
   latency_p50_ms: number | null
   latency_p95_ms: number | null
+  end_to_end_p50_ms: number | null
+  end_to_end_p95_ms: number | null
 }
 
 export type ServerMessage =

@@ -29,11 +29,13 @@ export function StatusBar({ connection, stats }: Props) {
         <Count label="Repaired" value={stats?.repaired} />
         <Count label="Rejected" value={stats?.rejected} />
         <Count label="Duplicates" value={stats?.duplicates} />
+        {known && <Count label="Incidents" value={stats.escalation.incidents_opened} />}
         {known && stats.ai.state !== 'off' && (
           <>
-            <Item label="AI latency p50 / p95">
+            <Item label="AI call p50 / p95">
               {formatMs(stats.ai.latency_p50_ms)} / {formatMs(stats.ai.latency_p95_ms)}
             </Item>
+            <Item label="Alarm to AI summary p95">{formatMs(stats.ai.end_to_end_p95_ms)}</Item>
             <Item label="AI spend">
               ${stats.ai.spent_usd.toFixed(4)} of ${stats.ai.budget_usd.toFixed(2)}
             </Item>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { changeStatus, type StatusAction } from './api'
-import { SEVERITY_LABEL, VERDICT_LABEL, ago, percent, typeLabel } from './format'
+import { SEVERITY_LABEL, VERDICT_LABEL, ago, alarmTitle, isIncident, percent, typeLabel } from './format'
 import type { Alarm } from './types'
 
 const FRESH_MS = 3000
@@ -11,6 +11,7 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
   const e = alarm.event
   const ai = alarm.ai
   const fresh = now - Date.parse(e.received_at) < FRESH_MS
+  const incident = isIncident(alarm)
 
   const act = async (action: StatusAction) => {
     setBusy(true)
@@ -25,7 +26,7 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
   }
 
   return (
-    <tr className={`row sev-${alarm.severity}${fresh ? ' fresh' : ''}`}>
+    <tr className={`row sev-${alarm.severity}${fresh ? ' fresh' : ''}${incident ? ' incident' : ''}`}>
       <td>
         <span className={`chip chip-${alarm.severity}`}>{SEVERITY_LABEL[alarm.severity]}</span>
       </td>
@@ -36,7 +37,7 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
           </a>
         )}
         <div className="alarm-type">
-          {typeLabel(e.type)}
+          {alarmTitle(alarm)}
           {ai && <span className={`verdict verdict-${ai.verdict}`}>{VERDICT_LABEL[ai.verdict]}</span>}
         </div>
         {ai ? (
@@ -47,6 +48,8 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
         ) : (
           <div className="alarm-reason">{alarm.reason}</div>
         )}
+        {incident && <IncidentDetail alarm={alarm} />}
+        {alarm.incident_id && !incident && <div className="triage-note">Part of an escalated incident</div>}
         <TriageNote alarm={alarm} />
         {e.issues.length > 0 && <div className="alarm-issues">Data repaired: {e.issues.join(', ')}</div>}
         {error && (
@@ -59,7 +62,7 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
         <div>{e.site_id}</div>
         <div className="muted">{e.zone}</div>
       </td>
-      <td className="col-optional">{e.source === 'camera' ? 'Camera' : 'Sensor'}</td>
+      <td className="col-optional">{SOURCE_LABEL[e.source]}</td>
       <td className="num col-optional">{percent(e.confidence)}</td>
       <td className="num" title={new Date(e.received_at).toLocaleString()}>
         {ago(e.received_at, now)}
@@ -80,6 +83,20 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
         )}
       </td>
     </tr>
+  )
+}
+
+const SOURCE_LABEL = { camera: 'Camera', sensor: 'Sensor', system: 'Correlation' }
+
+function IncidentDetail({ alarm }: { alarm: Alarm }) {
+  const meta = alarm.event.metadata
+  const types = (meta.alarm_types as string[] | undefined) ?? []
+  const zones = (meta.zones as string[] | undefined) ?? []
+  return (
+    <div className="incident-detail">
+      {String(meta.count ?? '')} linked alarms: {types.join(', ')}. Zones: {zones.join(', ')}. Acknowledging or resolving the
+      incident applies to all of them.
+    </div>
   )
 }
 

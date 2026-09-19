@@ -35,6 +35,17 @@ Every alarm is shown the moment it arrives, with a severity from simple rules. T
 - **Swappable:** the model sits behind a small `Triager` interface. Another provider or a local model is one class.
 - **Failure injection:** `POST /api/chaos/{off|slow|429|junk|flaky}` makes the AI misbehave on purpose, to show degradation live.
 
+## Alerting and escalation
+
+- **Impossible to miss:** while any critical alarm is unacknowledged, a red banner stays pinned to the top with the count, the number of escalated incidents and the age of the oldest. The browser tab title becomes `(3) CRITICAL · Sentinel`, so it is visible from another tab. An optional tone plays when a new critical arrives (at most one every 2 s, so a burst does not become noise).
+- **Escalation on patterns:** a correlator watches every accepted alarm and raises one critical incident when:
+  - **Repeated intrusion:** 3 confident intrusion alarms (breach, forced door, glass break) at one site within 2 minutes.
+  - **Corroborated by camera:** the camera sees a person and an intrusion sensor fires in the same zone within 2 minutes.
+- **One incident, not a stream:** while an incident is open, related alarms join it. Linked alarms are tagged, and acknowledging or resolving the incident applies to all of them. Alarms already grouped cannot open a second incident.
+- **Tuning evidence:** on the reference stream (about one alarm per second across 7 sites, types chosen uniformly at random), an hour of 3,356 alarms produced 18 incidents grouping 384 alarms. A real site is far quieter, so the thresholds are configurable (`ESCALATION_WINDOW_S`, `ESCALATION_THRESHOLD`).
+- **Demo trigger:** type `b` and Enter in the simulator terminal to play a scripted break-in (forced door, perimeter breach, glass break) at `--scenario-site` / `--scenario-zone`.
+- **Incidents go through the same pipeline** (`Pipeline.submit_event`), so they are stored, pushed to dashboards and summarised by the AI like any alarm. They can never be downgraded below critical. The feed cannot forge one: an external event claiming `source: system` is flagged and treated as a sensor.
+
 ## Camera
 
 A camera worker turns video into alarms that flow through the same pipeline, triage and dashboard as sensor events.

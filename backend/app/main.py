@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .camera.bridge import CameraBridge
 from .config import ROOT, SNAPSHOT_DIR, camera_config, settings
+from .escalation import Correlator
 from .hub import RESYNC, DashboardHub
 from .pipeline import Pipeline
 from .store import AlarmNotFound, AlarmStore, InvalidTransition
@@ -50,7 +51,12 @@ triage = TriageService(
     price_output_per_1m=settings.price_output_per_1m,
     timeout_s=settings.llm_timeout_s,
 )
-pipeline = Pipeline(store, on_accepted=triage.submit)
+pipeline = Pipeline(store)
+correlator = Correlator(
+    pipeline, store, window_s=settings.escalation_window_s, repeat_threshold=settings.escalation_threshold
+)
+pipeline.add_listener(triage.submit)
+pipeline.add_listener(correlator.observe)
 stream = StreamClient(settings.stream_url, pipeline)
 camera = CameraBridge(camera_config(), pipeline) if settings.camera_source else None
 
@@ -64,6 +70,7 @@ def current_stats() -> dict:
         "dashboards": hub.client_count,
         "resyncs": hub.resyncs,
         "ai": triage.stats(),
+        "escalation": correlator.stats(),
         "camera": camera.stats() if camera else None,
     }
 

@@ -4,12 +4,13 @@ import logging
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Optional
 
 from ..models import SEVERITY_RANK, AiTriage, Alarm, Event
 from ..store import AlarmStore
 from .llm import InvalidOutput, LLMResponse, LLMUnavailable, RateLimited, TriageResult, Triager
-from .rules import LIFE_SAFETY
+from .rules import ALWAYS_CRITICAL
 
 log = logging.getLogger("sentinel.triage")
 
@@ -24,12 +25,14 @@ class TriageMetrics:
     output_tokens: int = 0
     spent_usd: float = 0.0
     latencies_ms: deque = field(default_factory=lambda: deque(maxlen=200))
+    end_to_end_ms: deque = field(default_factory=lambda: deque(maxlen=200))
 
-    def percentile(self, p: float) -> Optional[int]:
-        if not self.latencies_ms:
-            return None
-        ordered = sorted(self.latencies_ms)
-        return ordered[min(len(ordered) - 1, int(p * len(ordered)))]
+
+def percentile(values, p: float) -> Optional[int]:
+    if not values:
+        return None
+    ordered = sorted(values)
+    return int(ordered[min(len(ordered) - 1, int(p * len(ordered)))])
 
 
 class TriageService:
@@ -101,8 +104,10 @@ class TriageService:
             "output_tokens": m.output_tokens,
             "spent_usd": round(m.spent_usd, 5),
             "budget_usd": self.budget_usd,
-            "latency_p50_ms": m.percentile(0.5),
-            "latency_p95_ms": m.percentile(0.95),
+            "latency_p50_ms": percentile(m.latencies_ms, 0.5),
+            "latency_p95_ms": percentile(m.latencies_ms, 0.95),
+            "end_to_end_p50_ms": percentile(m.end_to_end_ms, 0.5),
+            "end_to_end_p95_ms": percentile(m.end_to_end_ms, 0.95),
         }
 
     def submit(self, alarm: Alarm) -> None:
@@ -212,9 +217,9 @@ class TriageService:
         if alarm is None:
             return
         severity, source, note = result.severity, "ai", None
-        if alarm.event.type in LIFE_SAFETY and result.severity != "critical":
+        if alarm.event.type in ALWAYS_CRITICAL and result.severity != "critical":
             severity, source = "critical", "rules"
-            note = f"AI rated this {result.severity}. Kept critical: life-safety alarm."
+            note = f"AI rated this {result.severity}. Kept critical by safety rule."
         ai = AiTriage(
             severity=result.severity,
             verdict=result.verdict,
@@ -223,14 +228,15 @@ class TriageService:
             model=self.triager.model,
             latency_ms=latency_ms,
         )
-        self.store.apply_triage(
+        self.store.update(
             event_id, severity=severity, severity_source=source, triage_status="ai", triage_note=note, ai=ai
         )
         self.metrics.ai_triaged += 1
+        self.metrics.end_to_end_ms.append((datetime.now(timezone.utc) - alarm.event.received_at).total_seconds() * 1000)
 
     def _fallback(self, ids: list[str], note: str) -> None:
         for event_id in ids:
-            if self.store.apply_triage(event_id, triage_status="rules", triage_note=note):
+            if self.store.update(event_id, triage_status="rules", triage_note=note):
                 self.metrics.fallbacks += 1
 
     def _blocked_reason(self) -> Optional[str]:
