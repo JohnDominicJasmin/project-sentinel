@@ -33,3 +33,20 @@ It emits a bursty stream on `ws://localhost:8765`. Useful flags:
 Press **Enter** in the simulator terminal to fire a burst on demand.
 
 The simulator is the reference generator from the brief, extended with bursts and malformed input so the pipeline's degradation paths can be exercised.
+
+Start the backend in a second terminal:
+
+```bash
+cd backend
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+```
+
+- `GET http://localhost:8000/api/health`: stream status and ingest counters
+- `GET http://localhost:8000/api/alarms?limit=20`: newest alarms first
+
+Run the tests:
+
+```bash
+cd backend
+..\.venv\Scripts\python.exe -m pytest -q
+```
