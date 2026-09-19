@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Callable, Optional
 
 from .models import Alarm
 from .normalize import Rejected, normalize, parse_message
@@ -23,8 +23,9 @@ class IngestStats:
 class Pipeline:
     """Single entry point for every event, from the stream or the camera worker."""
 
-    def __init__(self, store: AlarmStore) -> None:
+    def __init__(self, store: AlarmStore, on_accepted: Optional[Callable[[Alarm], None]] = None) -> None:
         self.store = store
+        self.on_accepted = on_accepted
         self.stats = IngestStats()
 
     def submit(self, raw, origin: str = "stream") -> Optional[Alarm]:
@@ -52,4 +53,6 @@ class Pipeline:
         if event.issues:
             self.stats.repaired += 1
             log.info("repaired %s: %s", event.event_id, ", ".join(event.issues))
+        if self.on_accepted:
+            self.on_accepted(alarm)
         return alarm

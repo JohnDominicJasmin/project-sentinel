@@ -1,6 +1,8 @@
 export type Severity = 'info' | 'warning' | 'critical'
 export type Status = 'new' | 'acknowledged' | 'resolved'
 export type Connection = 'connecting' | 'live' | 'reconnecting'
+export type Verdict = 'likely_real' | 'probable_false_positive' | 'uncertain'
+export type TriageStatus = 'pending' | 'ai' | 'rules'
 
 export interface AlarmEvent {
   event_id: string
@@ -16,6 +18,15 @@ export interface AlarmEvent {
   issues: string[]
 }
 
+export interface AiTriage {
+  severity: Severity
+  verdict: Verdict
+  summary: string
+  action: string
+  model: string
+  latency_ms: number
+}
+
 export interface Alarm {
   seq: number
   event: AlarmEvent
@@ -23,6 +34,9 @@ export interface Alarm {
   severity: Severity
   severity_source: 'rules' | 'ai'
   reason: string
+  triage_status: TriageStatus
+  triage_note: string | null
+  ai: AiTriage | null
   updated_at: string
   acknowledged_at: string | null
   resolved_at: string | null
@@ -39,6 +53,25 @@ export interface FeedStats {
   stored: number
   dashboards: number
   resyncs: number
+  ai: AiStats
+}
+
+export interface AiStats {
+  state: 'on' | 'off' | 'paused' | 'budget_reached'
+  model: string | null
+  chaos: string
+  pause_reason: string | null
+  queue_depth: number
+  calls: number
+  failed_calls: number
+  ai_triaged: number
+  fallbacks: number
+  input_tokens: number
+  output_tokens: number
+  spent_usd: number
+  budget_usd: number
+  latency_p50_ms: number | null
+  latency_p95_ms: number | null
 }
 
 export type ServerMessage =

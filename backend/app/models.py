@@ -12,6 +12,10 @@ CAMERA_TYPES = {"motion_detected", "object_detected", "loitering", "glass_break"
 
 Severity = Literal["info", "warning", "critical"]
 Status = Literal["new", "acknowledged", "resolved"]
+Verdict = Literal["likely_real", "probable_false_positive", "uncertain"]
+TriageStatus = Literal["pending", "ai", "rules"]
+
+SEVERITY_RANK = {"critical": 0, "warning": 1, "info": 2}
 
 
 class Event(BaseModel):
@@ -28,6 +32,15 @@ class Event(BaseModel):
     issues: list[str] = Field(default_factory=list)
 
 
+class AiTriage(BaseModel):
+    severity: Severity
+    verdict: Verdict
+    summary: str
+    action: str
+    model: str
+    latency_ms: int
+
+
 class Alarm(BaseModel):
     seq: int
     event: Event
@@ -35,6 +48,9 @@ class Alarm(BaseModel):
     severity: Severity
     severity_source: Literal["rules", "ai"] = "rules"
     reason: str
+    triage_status: TriageStatus = "pending"
+    triage_note: Optional[str] = None
+    ai: Optional[AiTriage] = None
     updated_at: datetime
     acknowledged_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None

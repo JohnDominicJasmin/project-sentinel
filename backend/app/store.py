@@ -1,6 +1,6 @@
 from collections import deque
 from datetime import datetime, timezone
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from .models import Alarm, Event, Severity
 
@@ -68,6 +68,12 @@ class AlarmStore:
         while len(self._resolved) > self.max_resolved:
             self._alarms.pop(self._resolved.popleft(), None)
         return updated
+
+    def apply_triage(self, event_id: str, **changes: Any) -> Optional[Alarm]:
+        alarm = self._alarms.get(event_id)
+        if alarm is None:
+            return None
+        return self._update(alarm, **changes)
 
     def get(self, event_id: str) -> Optional[Alarm]:
         return self._alarms.get(event_id)

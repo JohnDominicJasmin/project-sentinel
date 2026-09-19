@@ -11,17 +11,45 @@ from .hub import RESYNC, DashboardHub
 from .pipeline import Pipeline
 from .store import AlarmNotFound, AlarmStore, InvalidTransition
 from .stream_client import StreamClient
+from .triage.llm import ChaosTriager, OpenAITriager
+from .triage.service import TriageService
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
+logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("sentinel")
 
+
+def build_triager():
+    if settings.triage != "openai":
+        return None
+    if not settings.openai_api_key:
+        log.warning("TRIAGE=openai but OPENAI_API_KEY is empty, using rules only")
+        return None
+    openai_triager = OpenAITriager(
+        api_key=settings.openai_api_key,
+        model=settings.openai_model,
+        reasoning_effort=settings.openai_reasoning_effort,
+        timeout_s=settings.llm_timeout_s,
+        site_timezone=settings.site_timezone,
+    )
+    return ChaosTriager(openai_triager, settings.llm_chaos)
+
+
 store = AlarmStore()
-pipeline = Pipeline(store)
 hub = DashboardHub(store)
+triage = TriageService(
+    store,
+    build_triager(),
+    budget_usd=settings.llm_budget_usd,
+    price_input_per_1m=settings.price_input_per_1m,
+    price_output_per_1m=settings.price_output_per_1m,
+    timeout_s=settings.llm_timeout_s,
+)
+pipeline = Pipeline(store, on_accepted=triage.submit)
 stream = StreamClient(settings.stream_url, pipeline)
 
 
@@ -33,6 +61,7 @@ def current_stats() -> dict:
         "stored": len(store),
         "dashboards": hub.client_count,
         "resyncs": hub.resyncs,
+        "ai": triage.stats(),
     }
 
 
@@ -45,18 +74,22 @@ async def publish_stats(every_seconds: float = 1) -> None:
 async def log_stats(every_seconds: float = 10) -> None:
     while True:
         await asyncio.sleep(every_seconds)
-        s = pipeline.stats
+        s, ai = pipeline.stats, triage.stats()
         log.info(
-            "ingest: received=%d accepted=%d repaired=%d rejected=%d duplicates=%d | stored=%d | stream=%s | dashboards=%d",
+            "ingest: received=%d accepted=%d repaired=%d rejected=%d duplicates=%d | stored=%d | stream=%s"
+            " | ai=%s triaged=%d fallbacks=%d queue=%d spent=$%.4f",
             s.received, s.accepted, s.repaired, s.rejected, s.duplicates,
-            len(store), "up" if stream.connected else "down", hub.client_count,
+            len(store), "up" if stream.connected else "down",
+            ai["state"], ai["ai_triaged"], ai["fallbacks"], ai["queue_depth"], ai["spent_usd"],
         )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    log.info("triage mode: %s", triage.stats()["model"] or "rules only")
     tasks = [
         asyncio.create_task(stream.run(), name="stream"),
+        asyncio.create_task(triage.run(), name="triage"),
         asyncio.create_task(publish_stats(), name="publish-stats"),
         asyncio.create_task(log_stats(), name="log-stats"),
     ]
@@ -96,6 +129,17 @@ def _change_status(action, event_id: str):
         raise HTTPException(status_code=404, detail="alarm not found")
     except InvalidTransition as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/api/chaos/{mode}")
+async def set_chaos(mode: str):
+    if not isinstance(triage.triager, ChaosTriager):
+        raise HTTPException(status_code=409, detail="AI triage is off")
+    if mode not in ChaosTriager.MODES:
+        raise HTTPException(status_code=400, detail=f"mode must be one of: {', '.join(ChaosTriager.MODES)}")
+    triage.triager.mode = mode
+    log.warning("chaos mode set to %s", mode)
+    return {"chaos": mode}
 
 
 @app.websocket("/ws")

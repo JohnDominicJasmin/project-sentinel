@@ -1,4 +1,4 @@
-import type { Alarm, Severity } from './types'
+import type { Alarm, Severity, Verdict } from './types'
 
 const TYPE_LABELS: Record<string, string> = {
   motion_detected: 'Motion',
@@ -22,12 +22,28 @@ export const SEVERITY_LABEL: Record<Severity, string> = {
 
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, warning: 1, info: 2 }
 
+export const VERDICT_LABEL: Record<Verdict, string> = {
+  likely_real: 'Likely real',
+  uncertain: 'Uncertain',
+  probable_false_positive: 'Probable false alarm',
+}
+
+const VERDICT_RANK: Record<Verdict, number> = { likely_real: 0, uncertain: 1, probable_false_positive: 2 }
+
+function verdictRank(alarm: Alarm): number {
+  return alarm.ai ? VERDICT_RANK[alarm.ai.verdict] : 1
+}
+
 export function typeLabel(type: string): string {
   return TYPE_LABELS[type] ?? type.replaceAll('_', ' ')
 }
 
 export function percent(confidence: number | null): string {
   return confidence == null ? 'n/a' : `${Math.round(confidence * 100)}%`
+}
+
+export function formatMs(ms: number | null): string {
+  return ms == null ? 'n/a' : `${(ms / 1000).toFixed(1)} s`
 }
 
 export function ago(iso: string, now: number): string {
@@ -41,6 +57,7 @@ export function ago(iso: string, now: number): string {
 export function byUrgency(a: Alarm, b: Alarm): number {
   return (
     SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] ||
+    verdictRank(a) - verdictRank(b) ||
     b.event.received_at.localeCompare(a.event.received_at)
   )
 }

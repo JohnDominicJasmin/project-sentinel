@@ -13,6 +13,28 @@ The five core requirements come first and must work end to end. On top of that I
 
 Deliberately not built: deeper vision (zone and tripwire rules, frame captioning), persistence and per-site history, the operator feedback loop, and dashboard auth. They are listed under "What I would build next".
 
+## AI triage
+
+Every alarm is shown the moment it arrives, with a severity from simple rules. The LLM works in the background and enriches it a second or so later with a severity, a verdict (likely real, uncertain, probable false alarm), a one-line summary and a recommended action. A slow or failing model can delay the summary, never the alarm.
+
+- **Model:** `gpt-5.4-mini` with structured JSON output, chosen after sending the same three alarms to five models twice:
+
+  | Model | Latency | Result |
+  |---|---|---|
+  | gpt-5.4-mini | 1.7 s, 1.7 s | Consistent, specific summaries |
+  | gpt-4.1-mini | 2.4 s, 5.6 s | Good, but latency varied |
+  | gpt-4o-mini | 2.3 s, 3.1 s | Called low-confidence smoke a false alarm and an animal "likely real" |
+  | gpt-4.1-nano, gpt-5.4-nano | 1.7 to 2.9 s | Verdicts changed between identical runs |
+
+  In a live run: 13 of 13 alarms triaged, p50 1.0 s, p95 1.8 s.
+- **Safety floor:** panic, fire and smoke stay critical whatever the model says. The model can still mark them uncertain, and the row shows both.
+- **Priority and batching:** critical alarms are sent first; under a burst, up to 8 alarms share one call.
+- **Degradation:** timeouts (10 s), rate limits, invalid output (validated against a schema, retried once), a spend cap and a deep backlog all fall back to the rule severity, and the row says why. Three failures in a row, or any rate limit, pause AI calls for 30 s.
+- **Cost:** tokens are metered per call and priced from `.env`. `LLM_BUDGET_USD` is a hard cap per run. In testing, a quiet stream cost about $0.0006 per alarm.
+- **Untrusted input:** alarm fields are sent as JSON data, and the prompt tells the model never to follow instructions inside them. The output can only set enumerated fields.
+- **Swappable:** the model sits behind a small `Triager` interface. Another provider or a local model is one class.
+- **Failure injection:** `POST /api/chaos/{off|slow|429|junk|flaky}` makes the AI misbehave on purpose, to show degradation live.
+
 ## Run it (so far)
 
 Requires Python 3.11+.

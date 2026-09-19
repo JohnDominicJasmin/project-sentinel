@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { changeStatus, type StatusAction } from './api'
-import { SEVERITY_LABEL, ago, percent, typeLabel } from './format'
+import { SEVERITY_LABEL, VERDICT_LABEL, ago, percent, typeLabel } from './format'
 import type { Alarm } from './types'
 
 const FRESH_MS = 3000
@@ -9,6 +9,7 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const e = alarm.event
+  const ai = alarm.ai
   const fresh = now - Date.parse(e.received_at) < FRESH_MS
 
   const act = async (action: StatusAction) => {
@@ -28,12 +29,21 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
       <td>
         <span className={`chip chip-${alarm.severity}`}>{SEVERITY_LABEL[alarm.severity]}</span>
       </td>
-      <td>
-        <div className="alarm-type">{typeLabel(e.type)}</div>
-        <div className="alarm-reason">{alarm.reason}</div>
-        {e.issues.length > 0 && (
-          <div className="alarm-issues">Data repaired: {e.issues.join(', ')}</div>
+      <td className="alarm-cell">
+        <div className="alarm-type">
+          {typeLabel(e.type)}
+          {ai && <span className={`verdict verdict-${ai.verdict}`}>{VERDICT_LABEL[ai.verdict]}</span>}
+        </div>
+        {ai ? (
+          <>
+            <div>{ai.summary}</div>
+            <div className="alarm-action">Action: {ai.action}</div>
+          </>
+        ) : (
+          <div className="alarm-reason">{alarm.reason}</div>
         )}
+        <TriageNote alarm={alarm} />
+        {e.issues.length > 0 && <div className="alarm-issues">Data repaired: {e.issues.join(', ')}</div>}
         {error && (
           <div className="alarm-error" role="alert">
             {error}
@@ -66,4 +76,14 @@ export function AlarmRow({ alarm, now }: { alarm: Alarm; now: number }) {
       </td>
     </tr>
   )
+}
+
+function TriageNote({ alarm }: { alarm: Alarm }) {
+  if (alarm.triage_status === 'pending') {
+    return <div className="triage-note">AI triage pending</div>
+  }
+  if (alarm.triage_note) {
+    return <div className="triage-note">{alarm.triage_note}</div>
+  }
+  return null
 }

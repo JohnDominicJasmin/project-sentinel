@@ -106,6 +106,10 @@ body {
   background: var(--critical);
 }
 
+.state-neutral::before {
+  background: var(--muted);
+}
+
 main {
   max-width: 1400px;
   margin: 0 auto;
@@ -227,6 +231,44 @@ main {
 
 .alarm-reason {
   color: var(--muted);
+}
+
+.alarm-cell {
+  max-width: 460px;
+}
+
+.alarm-action {
+  color: var(--muted);
+}
+
+.verdict {
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.verdict-likely_real {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.verdict-uncertain {
+  color: var(--warning);
+}
+
+.verdict-probable_false_positive {
+  color: var(--muted);
+}
+
+.triage-note {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
 }
 
 .alarm-issues {
