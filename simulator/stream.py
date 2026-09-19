@@ -5,6 +5,8 @@ Based on the reference generator in the Monitex brief. Additions:
   * bursts on demand (press Enter) or on a timer (--burst-every)
   * optional malformed messages (--junk) to exercise validation
   * a scripted break-in (type b then Enter) to demonstrate escalation
+  * replay: a client that reconnects with ?since=<event_id> first gets every
+    message it missed from a recent-history buffer
 
 Run:  python simulator/stream.py            (reference behaviour)
       python simulator/stream.py --junk 0.05 --burst-every 45
@@ -16,6 +18,8 @@ import json
 import random
 import threading
 import uuid
+from collections import deque
+from urllib.parse import parse_qs, urlparse
 
 import websockets
 
@@ -27,6 +31,7 @@ ZONES = ["north-perimeter", "lobby", "loading-dock", "roof", "server-room"]
 
 clients = set()
 last_message = None
+history = deque(maxlen=5000)
 
 
 def now_iso():
@@ -80,10 +85,37 @@ def next_message(junk_rate):
     return msg
 
 
+def send(message):
+    history.append((event_id_of(message), message))
+    websockets.broadcast(clients, message)
+
+
+def event_id_of(message):
+    try:
+        return json.loads(message).get("event_id")
+    except (ValueError, AttributeError):
+        return None
+
+
+def missed_since(since):
+    """Messages after `since` in the history buffer; all of it if `since` is unknown."""
+    items = list(history)
+    for index, (event_id, _) in enumerate(items):
+        if event_id == since:
+            return [message for _, message in items[index + 1:]]
+    return [message for _, message in items]
+
+
 async def handler(ws):
+    since = parse_qs(urlparse(ws.request.path).query).get("since", [None])[0]
+    missed = missed_since(since) if since else []
     clients.add(ws)
     print(f"client connected ({len(clients)} total)")
+    if missed:
+        print(f">>> replaying {len(missed)} missed events after {since}")
     try:
+        for message in missed:
+            await ws.send(message)
         await ws.wait_closed()
     finally:
         clients.discard(ws)
@@ -92,14 +124,14 @@ async def handler(ws):
 
 async def produce(args):
     while True:
-        websockets.broadcast(clients, next_message(args.junk))
+        send(next_message(args.junk))
         await asyncio.sleep(random.uniform(0.15, 2.0))   # bursty, as in the reference
 
 
 async def burst(size, junk_rate):
     print(f">>> burst: {size} events at once")
     for _ in range(size):
-        websockets.broadcast(clients, next_message(junk_rate))
+        send(next_message(junk_rate))
 
 
 async def break_in(site, zone):
@@ -107,7 +139,7 @@ async def break_in(site, zone):
     for kind, confidence in (("door_forced", 0.93), ("perimeter_breach", 0.88), ("glass_break", 0.91)):
         event = make_event()
         event.update(type=kind, source="sensor", site_id=site, zone=zone, confidence=confidence, metadata={})
-        websockets.broadcast(clients, json.dumps(event))
+        send(json.dumps(event))
         await asyncio.sleep(1.5)
 
 

@@ -48,6 +48,16 @@ class AlarmStore:
         self._emit(alarm)
         return alarm
 
+    def restore(self, alarms: list[Alarm]) -> None:
+        """Rebuild state from storage after a restart, without announcing anything."""
+        for alarm in sorted(alarms, key=lambda a: a.event.received_at):
+            self._alarms[alarm.event.event_id] = alarm
+            self._remember(alarm.event.event_id)
+        resolved = [a for a in alarms if a.status == "resolved"]
+        for alarm in sorted(resolved, key=lambda a: a.resolved_at or a.updated_at):
+            self._resolved.append(alarm.event.event_id)
+        self._seq = max((a.seq for a in alarms), default=self._seq)
+
     def acknowledge(self, event_id: str) -> Alarm:
         alarm = self._require(event_id)
         if alarm.status == "resolved":

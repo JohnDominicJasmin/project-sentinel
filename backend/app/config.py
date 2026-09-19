@@ -22,6 +22,7 @@ class Settings:
     llm_timeout_s: float = float(os.getenv("LLM_TIMEOUT_S", "10"))
     llm_chaos: str = os.getenv("LLM_CHAOS", "off")
     site_timezone: str = os.getenv("SITE_TIMEZONE", "America/New_York")
+    db_path: str = os.getenv("DB_PATH", "data/sentinel.db")
     escalation_window_s: float = float(os.getenv("ESCALATION_WINDOW_S", "120"))
     escalation_threshold: int = int(os.getenv("ESCALATION_THRESHOLD", "3"))
     camera_feeds_file: str = os.getenv("CAMERA_FEEDS_FILE", "feeds.json")

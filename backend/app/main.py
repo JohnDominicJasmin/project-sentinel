@@ -10,6 +10,7 @@ from .camera.bridge import CameraBridge, UnknownFeed
 from .config import ROOT, SNAPSHOT_DIR, camera_config, initial_feed, load_feeds, settings
 from .escalation import Correlator
 from .hub import RESYNC, DashboardHub
+from .persistence import AlarmRepository, PersistenceWriter
 from .pipeline import Pipeline
 from .store import AlarmNotFound, AlarmStore, InvalidTransition
 from .stream_client import StreamClient
@@ -58,6 +59,8 @@ correlator = Correlator(
 pipeline.add_listener(triage.submit)
 pipeline.add_listener(correlator.observe)
 stream = StreamClient(settings.stream_url, pipeline)
+repository = AlarmRepository(ROOT / settings.db_path)
+persistence = PersistenceWriter(repository, store, resume_point=lambda: stream.last_event_id)
 feeds = load_feeds()
 start_feed = initial_feed(feeds)
 camera = CameraBridge(feeds, start_feed, camera_config, pipeline) if start_feed else None
@@ -73,6 +76,7 @@ def current_stats() -> dict:
         "resyncs": hub.resyncs,
         "ai": triage.stats(),
         "escalation": correlator.stats(),
+        "persistence": persistence.stats(),
         "camera": camera.stats() if camera else None,
     }
 
@@ -99,7 +103,9 @@ async def log_stats(every_seconds: float = 10) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("triage mode: %s", triage.stats()["model"] or "rules only")
+    restore_state()
     tasks = [
+        asyncio.create_task(persistence.run(), name="persistence"),
         asyncio.create_task(stream.run(), name="stream"),
         asyncio.create_task(triage.run(), name="triage"),
         asyncio.create_task(publish_stats(), name="publish-stats"),
@@ -114,6 +120,21 @@ async def lifespan(app: FastAPI):
     for task in tasks:
         task.cancel()
     await asyncio.gather(*tasks, return_exceptions=True)
+    await persistence.flush()
+    repository.close()
+    log.info("saved state to %s", repository.path)
+
+
+def restore_state() -> None:
+    alarms, last_event_id = repository.load(resolved_limit=store.max_resolved)
+    store.restore(alarms)
+    stream.last_event_id = last_event_id
+    persistence.restored = len(alarms)
+    pending = [a for a in alarms if a.triage_status == "pending" and a.status != "resolved"]
+    for alarm in pending:
+        triage.submit(alarm)
+    log.info("restored %d alarms from %s (%d sent back to triage), stream resumes after %s",
+             len(alarms), repository.path.name, len(pending), last_event_id or "start")
 
 
 app = FastAPI(title="Project Sentinel", lifespan=lifespan)

@@ -6,12 +6,13 @@ A miniature real-time alarm monitoring service: it ingests a live stream of sens
 
 ## Scope
 
-The five core requirements come first and must work end to end. On top of that I chose two stretch goals:
+The five core requirements come first and must work end to end. On top of that I chose two stretch goals, and later added a third once the core was solid:
 
 - **Correlation and escalation:** repeated or combined signals at one site become a single escalated incident. It completes the "escalate on patterns" part of the alerting rule, and it cuts the noise an operator has to read.
 - **Operability (AI cost and latency metrics):** the dashboard shows what the AI layer costs and how fast it answers, so its trade-offs are visible and measured.
+- **Persistence (added last):** alarms survive a backend crash or restart, and alarms sent while the backend was down are replayed. See "Never lose an alarm".
 
-Deliberately not built: deeper vision (zone and tripwire rules, frame captioning), persistence and per-site history, the operator feedback loop, and dashboard auth. They are listed under "What I would build next".
+Deliberately not built: deeper vision (zone and tripwire rules, frame captioning), per-site history views, the operator feedback loop, and dashboard auth. They are listed under "What I would build next".
 
 ## AI triage
 
@@ -45,6 +46,14 @@ Every alarm is shown the moment it arrives, with a severity from simple rules. T
 - **Tuning evidence:** on the reference stream (about one alarm per second across 7 sites, types chosen uniformly at random), an hour of 3,356 alarms produced 18 incidents grouping 384 alarms. A real site is far quieter, so the thresholds are configurable (`ESCALATION_WINDOW_S`, `ESCALATION_THRESHOLD`).
 - **Demo trigger:** type `b` and Enter in the simulator terminal to play a scripted break-in (forced door, perimeter breach, glass break) at `--scenario-site` / `--scenario-zone`.
 - **Incidents go through the same pipeline** (`Pipeline.submit_event`), so they are stored, pushed to dashboards and summarised by the AI like any alarm. They can never be downgraded below critical. The feed cannot forge one: an external event claiming `source: system` is flagged and treated as a sensor.
+
+## Never lose an alarm
+
+- **Saved as it happens:** every alarm change is written to SQLite (`data/sentinel.db`) by a write-behind task: changes are collected and saved in one transaction every 250 ms, in a worker thread, so disk latency never blocks the stream. Several changes to one alarm between saves are written once.
+- **Restored on start:** open alarms, their triage and their status come back after a restart. Alarms still waiting for the AI are queued again.
+- **Replay of what was missed:** the backend saves the id of the last stream event it processed, in the same transaction. On reconnect it asks the feed for `?since=<id>`, and the simulator replays everything after it from a 5,000-message history. Dedupe by event id means a replayed alarm is never stored twice. A feed without replay (like the original reference generator) simply ignores the parameter.
+- **Tested with a crash:** the backend was killed hard mid-stream, the simulator kept sending for 10 s, and the backend was restarted. An independent client recorded every event the simulator sent: all 27 events from the backend's first connection onward were stored, including the 11 sent while it was down.
+- **Limits:** events sent before the backend ever connected for the first time are not backfilled; the replay buffer covers about 80 minutes of downtime at the simulator's rate; the escalation correlator's 2-minute window is not persisted, so a pattern that spans a restart starts counting again.
 
 ## Camera
 
