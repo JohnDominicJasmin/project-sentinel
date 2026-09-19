@@ -6,6 +6,7 @@ from typing import Optional
 from .models import Alarm
 from .normalize import Rejected, normalize, parse_message
 from .store import AlarmStore
+from .triage.rules import rule_severity
 
 log = logging.getLogger("sentinel.pipeline")
 
@@ -40,7 +41,8 @@ class Pipeline:
             log.exception("unexpected error normalising message from %s", origin)
             return None
 
-        alarm = self.store.add(event)
+        severity, reason = rule_severity(event)
+        alarm = self.store.add(event, severity, reason)
         if alarm is None:
             self.stats.duplicates += 1
             log.info("duplicate %s ignored", event.event_id)

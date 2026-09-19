@@ -40,5 +40,5 @@ def test_alarms_list_newest_first():
     pipeline = Pipeline(AlarmStore())
     for i in range(3):
         pipeline.submit(message(event_id=f"evt_{i}"))
-    ids = [a.event.event_id for a in pipeline.store.list()]
+    ids = [a.event.event_id for a in pipeline.store.recent()]
     assert ids == ["evt_2", "evt_1", "evt_0"]

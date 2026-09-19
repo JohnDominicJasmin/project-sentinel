@@ -32,5 +32,9 @@ class Alarm(BaseModel):
     seq: int
     event: Event
     status: Status = "new"
-    severity: Optional[Severity] = None
+    severity: Severity
+    severity_source: Literal["rules", "ai"] = "rules"
+    reason: str
     updated_at: datetime
+    acknowledged_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None

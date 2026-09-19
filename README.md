@@ -50,6 +50,16 @@ cd backend
 ..\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 ```
 
+Build the operator dashboard once (requires Node 20+). The backend serves it at http://localhost:8000:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+For UI work with hot reload, run `npm run dev` instead and open http://localhost:5173 (it proxies `/api` and `/ws` to the backend).
+
 - `GET http://localhost:8000/api/health`: stream status and ingest counters
 - `GET http://localhost:8000/api/alarms?limit=20`: newest alarms first
 
