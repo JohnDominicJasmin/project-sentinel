@@ -45,18 +45,25 @@ export function useCriticalAlerts(alarms: Alarm[]) {
   return { critical, soundOn, toggleSound }
 }
 
+const TONE_VOLUME = 0.9
+const TONE_PATTERN = [988, 740, 988, 740, 988]
+const TONE_LENGTH_S = 0.22
+const TONE_GAP_S = 0.08
+
 function playTone(ctx: AudioContext) {
   const start = ctx.currentTime
-  ;[880, 660].forEach((frequency, i) => {
-    const at = start + i * 0.18
+  TONE_PATTERN.forEach((frequency, i) => {
+    const at = start + i * (TONE_LENGTH_S + TONE_GAP_S)
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
+    osc.type = 'square'
     osc.frequency.value = frequency
     gain.gain.setValueAtTime(0.0001, at)
-    gain.gain.exponentialRampToValueAtTime(0.25, at + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.16)
+    gain.gain.exponentialRampToValueAtTime(TONE_VOLUME, at + 0.02)
+    gain.gain.setValueAtTime(TONE_VOLUME, at + TONE_LENGTH_S - 0.04)
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + TONE_LENGTH_S)
     osc.connect(gain).connect(ctx.destination)
     osc.start(at)
-    osc.stop(at + 0.17)
+    osc.stop(at + TONE_LENGTH_S + 0.01)
   })
 }
