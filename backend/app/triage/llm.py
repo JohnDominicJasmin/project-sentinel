@@ -173,7 +173,6 @@ class OpenAITriager:
 
 
 class ChaosTriager:
-    """Wraps a real triager and injects failures on demand, for demos and tests."""
 
     MODES = ("off", "slow", "429", "junk", "flaky")
 
@@ -196,4 +195,3 @@ class ChaosTriager:
         if mode == "junk":
             parse_results("I am not JSON", 0, 0)
         return await self.inner.triage(events)
-

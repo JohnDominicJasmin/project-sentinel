@@ -29,7 +29,6 @@ class Detection:
 
 
 class YoloOnnx:
-    """YOLO26n exported to ONNX, run on CPU with a letterboxed input and our own NMS."""
 
     def __init__(self, model_path: str, confidence: float = 0.45, iou: float = 0.5, threads: int = 2) -> None:
         options = ort.SessionOptions()

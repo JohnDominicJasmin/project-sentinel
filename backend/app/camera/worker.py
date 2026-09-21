@@ -22,11 +22,6 @@ BOX_COLOURS = {"person": (60, 80, 240), "vehicle": (40, 170, 240), "animal": (17
 
 
 class LatestFrameReader(threading.Thread):
-    """Reads the source as fast as it produces frames and keeps only the newest one.
-
-    The detector always gets the most recent frame, so a slow detection never
-    builds a backlog of stale video. Files loop; streams reconnect with backoff.
-    """
 
     def __init__(self, source: str, stop: threading.Event) -> None:
         super().__init__(daemon=True, name="frame-reader")

@@ -17,12 +17,6 @@ class UnknownFeed(KeyError):
 
 
 class CameraBridge:
-    """Owns the camera worker process and moves its detections into the pipeline.
-
-    Decoding and inference run in a separate process, so they never compete
-    with the event loop that ingests the alarm stream. If the worker dies, it
-    is restarted. Switching feeds restarts the worker on the new source.
-    """
 
     def __init__(self, feeds: list[dict], feed: dict, make_config: Callable[[dict], dict], pipeline: Pipeline) -> None:
         self.feeds = feeds

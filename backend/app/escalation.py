@@ -33,15 +33,6 @@ class Signal:
 
 
 class Correlator:
-    """Watches accepted alarms for patterns at one site and raises a single escalated incident.
-
-    Rules:
-      repeated_intrusion   N intrusion alarms (breach, forced door, glass break) at one site within the window
-      camera_corroborated  the camera sees a person and an intrusion sensor fires in the same zone within the window
-
-    Only confident signals count. While an incident is unresolved and active, further matching
-    alarms join it instead of opening a new one, so one site produces one incident, not a stream.
-    """
 
     def __init__(
         self,

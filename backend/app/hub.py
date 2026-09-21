@@ -8,12 +8,6 @@ RESYNC = object()
 
 
 class DashboardHub:
-    """Fans every store change out to connected dashboards.
-
-    Each dashboard gets its own bounded queue, so a slow browser can never
-    slow the pipeline down. If a queue overflows, it is cleared and the
-    dashboard is sent a fresh snapshot instead of a gap.
-    """
 
     def __init__(self, store: AlarmStore, queue_size: int = 2000) -> None:
         self.store = store

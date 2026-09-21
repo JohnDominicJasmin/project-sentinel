@@ -1,16 +1,3 @@
-"""Project Sentinel event simulator.
-
-Based on the reference generator in the Monitex brief. Additions:
-  * one shared stream broadcast to every connected client
-  * bursts on demand (press Enter) or on a timer (--burst-every)
-  * optional malformed messages (--junk) to exercise validation
-  * a scripted break-in (type b then Enter) to demonstrate escalation
-  * replay: a client that reconnects with ?since=<event_id> first gets every
-    message it missed from a recent-history buffer
-
-Run:  python simulator/stream.py            (reference behaviour)
-      python simulator/stream.py --junk 0.05 --burst-every 45
-"""
 import argparse
 import asyncio
 import datetime
@@ -55,7 +42,6 @@ def make_event():
 
 
 def make_junk(previous):
-    """One malformed message, the kind a real field feed sends."""
     evt = make_event()
     kind = random.choice(["drop_fields", "bad_confidence", "unknown_type",
                           "bad_timestamp", "not_json", "duplicate"])
@@ -98,7 +84,6 @@ def event_id_of(message):
 
 
 def missed_since(since):
-    """Messages after `since` in the history buffer; all of it if `since` is unknown."""
     items = list(history)
     for index, (event_id, _) in enumerate(items):
         if event_id == since:
@@ -125,7 +110,7 @@ async def handler(ws):
 async def produce(args):
     while True:
         send(next_message(args.junk))
-        await asyncio.sleep(random.uniform(0.15, 2.0))   # bursty, as in the reference
+        await asyncio.sleep(random.uniform(0.15, 2.0))
 
 
 async def burst(size, junk_rate):
@@ -150,7 +135,6 @@ async def burst_timer(args):
 
 
 def watch_keyboard(loop, args):
-    """Enter fires a burst; "b" then Enter plays a break-in. Handy while recording the demo."""
     while True:
         try:
             line = input().strip().lower()

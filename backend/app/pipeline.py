@@ -23,7 +23,6 @@ class IngestStats:
 
 
 class Pipeline:
-    """Single entry point for every event: the stream, the camera worker and the correlator."""
 
     def __init__(self, store: AlarmStore) -> None:
         self.store = store

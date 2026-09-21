@@ -36,12 +36,6 @@ def percentile(values, p: float) -> Optional[int]:
 
 
 class TriageService:
-    """Runs AI triage in the background so a slow or failing model never blocks ingestion.
-
-    Alarms are queued most-severe first and sent in small batches. Every
-    failure path (timeout, rate limit, junk output, budget, backlog) leaves
-    the alarm on its rule-based severity with a note saying why.
-    """
 
     def __init__(
         self,

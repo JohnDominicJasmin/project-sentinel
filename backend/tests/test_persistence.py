@@ -9,7 +9,7 @@ from app.store import AlarmStore
 from app.stream_client import StreamClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "simulator"))
-import stream as simulator  # noqa: E402
+import stream as simulator
 
 NOW = datetime(2026, 9, 19, 12, 0, tzinfo=timezone.utc)
 

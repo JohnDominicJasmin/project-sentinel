@@ -47,7 +47,6 @@ def resolve(path: str) -> str:
 
 
 def load_feeds() -> list[dict]:
-    """Camera feeds from feeds.json whose source exists, plus CAMERA_SOURCE (e.g. an RTSP URL) if set."""
     feeds = []
     path = ROOT / settings.camera_feeds_file
     if path.is_file():

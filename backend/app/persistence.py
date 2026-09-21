@@ -35,7 +35,6 @@ ON CONFLICT(event_id) DO UPDATE SET
 
 
 class AlarmRepository:
-    """SQLite storage for alarms and the stream resume point."""
 
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -86,11 +85,6 @@ class AlarmRepository:
 
 
 class PersistenceWriter:
-    """Write-behind: collects store changes and saves them in one transaction every interval.
-
-    Writes happen in a worker thread, so disk latency never blocks the event loop.
-    Several changes to the same alarm between flushes are saved once, in their latest state.
-    """
 
     def __init__(
         self,

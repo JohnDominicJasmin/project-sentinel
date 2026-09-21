@@ -16,7 +16,6 @@ class InvalidTransition(Exception):
 
 
 class AlarmStore:
-    """In-memory alarm state. Every change gets the next sequence number and is announced to listeners."""
 
     def __init__(self, max_resolved: int = 5000, max_seen: int = 100_000) -> None:
         self._alarms: dict[str, Alarm] = {}
@@ -49,7 +48,6 @@ class AlarmStore:
         return alarm
 
     def restore(self, alarms: list[Alarm]) -> None:
-        """Rebuild state from storage after a restart, without announcing anything."""
         for alarm in sorted(alarms, key=lambda a: a.event.received_at):
             self._alarms[alarm.event.event_id] = alarm
             self._remember(alarm.event.event_id)

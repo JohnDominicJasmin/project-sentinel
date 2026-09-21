@@ -32,7 +32,6 @@ def iou(a: Box, b: Box) -> float:
 
 
 class Tracker:
-    """Greedy IoU tracker: enough to give each object one identity across frames."""
 
     def __init__(self, iou_threshold: float = 0.25, max_missing_s: float = 2.0) -> None:
         self.iou_threshold = iou_threshold
@@ -67,12 +66,6 @@ class Tracker:
 
 
 class EventPolicy:
-    """Turns tracks into alarms without spamming the operator.
-
-    One alarm per object (after it is seen in a few frames), one loitering
-    alarm if a person stays, and a cooldown so an object that flickers out
-    and back in at the same spot does not alarm twice.
-    """
 
     def __init__(self, min_hits: int = 2, loiter_s: float = 15.0, cooldown_s: float = 30.0) -> None:
         self.min_hits = min_hits
