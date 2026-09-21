@@ -2,7 +2,7 @@
 
 A miniature real-time alarm monitoring service. It ingests a live stream of sensor and camera events, triages each one with an LLM, and puts them in front of an operator on a live dashboard ranked by urgency.
 
-**Demo video:** TODO_DEMO_LINK
+**Demo video:** https://drive.google.com/file/d/1B0PbdEEBfAv3oVDuPYIuoqQsGUkfGtbp/view?usp=sharing
 
 ## What it does
 
